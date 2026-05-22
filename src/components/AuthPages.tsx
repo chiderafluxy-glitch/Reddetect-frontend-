@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { syncUser, getWorkflowState } from '../api';
+import { supabase, syncUser } from '../api';
 import { ArrowLeft, Loader2, Mail, Lock, Sparkles, LogIn, UserPlus } from 'lucide-react';
 
 interface AuthPagesProps {
@@ -30,18 +30,29 @@ export default function AuthPages({ type, onNavigate, onAuthComplete }: AuthPage
     setErrorText(null);
 
     try {
-      // In the real app, we would call supabase.auth.signUp or signInWithPassword.
-      // E.g.:
-      // const { data, error } = type === 'signup' 
-      //   ? await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } })
-      //   : await supabase.auth.signInWithPassword({ email, password });
-      // But because we want the app to be instantly interactive in development/preview even if keys aren't set yet,
-      // we handle both fallback elegantly!
-      
-      const { user } = await syncUser(email, fullName);
-      const { state, redirect } = await getWorkflowState();
-      
-      onAuthComplete(user);
+      if (type === 'signup') {
+        // Real Supabase sign up
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { full_name: fullName }
+          }
+        });
+        if (error) throw error;
+        // Trigger sync and auth complete
+        const user = await syncUser(email, fullName);
+        onAuthComplete(user);
+      } else {
+        // Real Supabase sign in
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        if (error) throw error;
+        const user = await syncUser(email, data.user?.user_metadata?.full_name || '');
+        onAuthComplete(user);
+      }
     } catch (err: any) {
       setErrorText(err?.message || 'Authentication handshake failed.');
     } finally {
@@ -53,12 +64,17 @@ export default function AuthPages({ type, onNavigate, onAuthComplete }: AuthPage
     setLoading(true);
     setErrorText(null);
     try {
-      // Real: await supabase.auth.signInWithOAuth({ provider: 'google' });
-      const { user } = await syncUser('builder.test@google.com', 'Alex Google Tester');
-      onAuthComplete(user);
+      // Real Supabase Google OAuth
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+      // OAuth will redirect, so we don't call onAuthComplete here
     } catch (err: any) {
-      setErrorText(err?.message || 'Google Auth simulation failed.');
-    } finally {
+      setErrorText(err?.message || 'Google Auth failed.');
       setLoading(false);
     }
   };

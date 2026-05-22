@@ -8,30 +8,23 @@ import { Report, ReportData, Workspace, Note, GeneratedPosts, WorkflowState, Sub
 
 const metaEnv = (import.meta as any).env || {};
 
-// Read API base URL from Vite environment variables (or fall back to development localhost)
-const API_URL = metaEnv.VITE_API_URL || metaEnv.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+// Read API base URL from Vite environment variables
+const API_URL = metaEnv.VITE_API_URL || '';
 
-// Initialize Supabase. If keys are missing, we fall back to sandbox mode gracefully.
-const SUPABASE_URL = metaEnv.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co';
-const SUPABASE_ANON_KEY = metaEnv.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+// Initialize Supabase - always use real values from environment
+const SUPABASE_URL = metaEnv.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = metaEnv.VITE_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Helper to determine if we are in Live API or Sandbox mode.
-// We can store a toggled preference in localStorage.
-let isLiveConnection = localStorage.getItem('reddetect_use_live') === 'true';
-
+// Always use live mode - never fall back to sandbox
 export function getApiMode(): 'live' | 'sandbox' {
-  // If we don't have real Supabase config or server configured, default to sandbox
-  if (!metaEnv.VITE_SUPABASE_URL && !localStorage.getItem('reddetect_use_live')) {
-    return 'sandbox';
-  }
-  return isLiveConnection ? 'live' : 'sandbox';
+  return 'live';
 }
 
 export function setApiMode(mode: 'live' | 'sandbox') {
-  isLiveConnection = mode === 'live';
-  localStorage.setItem('reddetect_use_live', mode === 'live' ? 'true' : 'false');
+  // No-op: always stays in live mode
+  console.log('ApiMode is always live - sandbox mode is disabled');
 }
 
 // Helper to get supabase access token
