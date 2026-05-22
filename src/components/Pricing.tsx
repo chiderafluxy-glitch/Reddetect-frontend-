@@ -200,20 +200,6 @@ export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmai
           ))}
         </div>
 
-        {/* Hidden tier bottom panel */}
-        <div className="text-center mt-4">
-          <p className="text-xs text-white/30">
-            Testing or evaluating our software?{' '}
-            <button 
-              onClick={() => handleCheckout('price_free_tier')}
-              className="text-white/60 hover:text-goldenrod-orange underline transition-colors font-medium bg-transparent border-0 cursor-pointer"
-            >
-              Continue using limited Sandbox access (3 free reports/mo) →
-            </button>
-          </p>
-        </div>
-      </div>
-
       {/* Stripe Payment Mock Interface Modal */}
       {showSimulatedCheckout && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
