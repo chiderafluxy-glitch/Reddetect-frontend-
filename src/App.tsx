@@ -16,7 +16,7 @@ import WorkspaceDetail from './components/WorkspaceDetail';
 import IdeaVault from './components/IdeaVault';
 import Graveyard from './components/Graveyard';
 import Settings from './components/Settings';
-import { getWorkflowState, setApiMode, getApiMode } from './api';
+import { getWorkflowState, setApiMode, getApiMode, supabase, syncUser } from './api';
 import { User, WorkflowState } from './types';
 import { Sparkles, Terminal, AlertTriangle } from 'lucide-react';
 
@@ -49,6 +49,36 @@ export default function App() {
         }
       }
     }
+  }, []);
+
+  // Handle Supabase auth state changes (handles redirect after Google OAuth)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        const userEmail = session.user.email || '';
+        const fullName = session.user.user_metadata?.full_name || '';
+        
+        // Sync user with backend
+        await syncUser(userEmail, fullName);
+        
+        // Get workflow state and redirect
+        try {
+          const stateResponse = await getWorkflowState();
+          setWorkflowState(stateResponse.state);
+          
+          if (!stateResponse.state.has_paid) {
+            setCurrentPage('pricing');
+          } else {
+            setCurrentPage('dashboard');
+          }
+        } catch (e) {
+          console.warn('Failed to get workflow state after auth', e);
+          setCurrentPage('pricing');
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const verifyStateAndRedirect = async (activeUser: User) => {
