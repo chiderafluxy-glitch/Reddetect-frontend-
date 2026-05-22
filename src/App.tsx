@@ -56,22 +56,44 @@ export default function App() {
 
 const handleSupabaseSession = async (session: any) => {
   try {
-    const { user } = await syncUser(
-      session.user.email,
-      session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
-    );
-    localStorage.setItem('reddetect_current_user', JSON.stringify(user));
-    setUser(user);
-    const stateResponse = await getWorkflowState();
-    setWorkflowState(stateResponse.state);
-    if (!stateResponse.state.has_paid) {
-      setCurrentPage('pricing');
-    } else {
-      setCurrentPage('dashboard');
+    // Try to sync with backend, but don't fail if backend is down
+    let user: User | null = null;
+    let hasPaid = false;
+    
+    try {
+      const result = await syncUser(
+        session.user.email,
+        session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
+      );
+      user = result.user;
+      hasPaid = result.workflowState?.has_paid || false;
+    } catch (syncError) {
+      console.warn('Backend sync failed, using Supabase session directly', syncError);
+      // Use Supabase user data directly if backend fails
+      user = {
+        id: session.user.id,
+        email: session.user.email,
+        full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
+      };
+      // Try to get workflow state, default to pricing if fails
+      try {
+        const stateResponse = await getWorkflowState();
+        hasPaid = stateResponse.state?.has_paid || false;
+      } catch {
+        hasPaid = false; // Default to pricing if can't determine
+      }
+    }
+    
+    if (user) {
+      localStorage.setItem('reddetect_current_user', JSON.stringify(user));
+      setUser(user);
+      setWorkflowState({ has_signed_up: true, has_paid: hasPaid });
+      setCurrentPage(hasPaid ? 'dashboard' : 'pricing');
     }
   } catch (e) {
     console.error('Session handling failed', e);
-    setCurrentPage('landing');
+    // Even if everything fails, try to show pricing page
+    setCurrentPage('pricing');
   }
 };
 
