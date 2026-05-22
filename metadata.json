@@ -1,0 +1,6 @@
+{
+  "name": "Reddetect",
+  "description": "Premium market research and SaaS idea validation tool. Connects deep web scrapers in parallel to parse genuine user discussions, quotes, competitor features, and buying power metrics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

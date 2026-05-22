@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --color-midnight-ink: #001011;
+  --color-goldenrod-orange: #fd5321;
+  --color-storm-gray: #0f1e1f;
+  --color-accent-blue: #007aff;
+  --color-vanilla-cream: #fcfbf8;
+  --color-ash-mist: #c1c4c2;
+  --color-parchment: #ededea;
+
+  --font-aeonikpro: "AeonikPro", system-ui, -apple-system, sans-serif;
+  --font-dotconnect: "DotConnect", system-ui, -apple-system, sans-serif;
+}
+
+/* Custom scrollbars and transitions to elevate the aesthetic quality */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #001011;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e3537;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2c4e51;
+}
+
+html, body {
+  background-color: #001011; /* Midnight Ink background for our premium dark theme */
+  color: #fcfbf8; /* Vanilla Cream text color for high contrast */
+  font-family: var(--font-aeonikpro);
+  font-feature-settings: "dlig", "ss02", "ss08";
+  -webkit-font-smoothing: antialiased;
+}
+
