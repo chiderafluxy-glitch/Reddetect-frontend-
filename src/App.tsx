@@ -26,60 +26,54 @@ export default function App() {
   const [workflowState, setWorkflowState] = useState<WorkflowState>({ has_signed_up: false, has_paid: false });
   const [systemAlert, setSystemAlert] = useState<string | null>(null);
 
-  // Sync user state and redirects based on local persistent credentials
   useEffect(() => {
-    // Check if we have a persisted session in client
-    const savedUser = localStorage.getItem('reddetect_current_user');
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser) as User;
-        setUser(parsed);
-        verifyStateAndRedirect(parsed);
-      } catch {
-        // Safe reset
-        localStorage.removeItem('reddetect_current_user');
-      }
-    } else {
-      // Decode URL hash to assist with simple navigation on load
-      const hash = window.location.hash;
-      if (hash && hash.startsWith('#')) {
-        const path = hash.slice(1);
-        if (['landing', 'login', 'signup', 'pricing'].includes(path)) {
-          setCurrentPage(path);
-        }
-      }
-    }
-  }, []);
-
-  // Handle Supabase auth state changes (handles redirect after Google OAuth)
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        const userEmail = session.user.email || '';
-        const fullName = session.user.user_metadata?.full_name || '';
-        
-        // Sync user with backend
-        await syncUser(userEmail, fullName);
-        
-        // Get workflow state and redirect
-        try {
-          const stateResponse = await getWorkflowState();
-          setWorkflowState(stateResponse.state);
-          
-          if (!stateResponse.state.has_paid) {
-            setCurrentPage('pricing');
-          } else {
-            setCurrentPage('dashboard');
+    // Check for existing session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        handleSupabaseSession(session);
+      } else {
+        const hash = window.location.hash;
+        if (hash && hash.startsWith('#')) {
+          const path = hash.slice(1);
+          if (['landing', 'login', 'signup', 'pricing'].includes(path)) {
+            setCurrentPage(path);
           }
-        } catch (e) {
-          console.warn('Failed to get workflow state after auth', e);
-          setCurrentPage('pricing');
         }
       }
     });
 
+    // Listen for auth state changes including Google OAuth redirect
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          handleSupabaseSession(session);
+        }
+      }
+    );
+
     return () => subscription.unsubscribe();
   }, []);
+
+const handleSupabaseSession = async (session: any) => {
+  try {
+    const { user } = await syncUser(
+      session.user.email,
+      session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
+    );
+    localStorage.setItem('reddetect_current_user', JSON.stringify(user));
+    setUser(user);
+    const stateResponse = await getWorkflowState();
+    setWorkflowState(stateResponse.state);
+    if (!stateResponse.state.has_paid) {
+      setCurrentPage('pricing');
+    } else {
+      setCurrentPage('dashboard');
+    }
+  } catch (e) {
+    console.error('Session handling failed', e);
+    setCurrentPage('landing');
+  }
+};
 
   const verifyStateAndRedirect = async (activeUser: User) => {
     try {
