@@ -333,34 +333,20 @@ export async function createCheckout(priceId: string): Promise<{ url: string }> 
   const mode = getApiMode();
   if (mode === 'live') {
     const header = await getAuthHeader();
-    console.log('Auth header for checkout:', header);
-    console.log('Calling backend:', `${API_URL}/api/stripe/create-checkout`);
     const res = await fetch(`${API_URL}/api/stripe/create-checkout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...header },
       body: JSON.stringify({ priceId })
     });
-    console.log('Backend response status:', res.status);
-    const responseData = await res.json().catch(() => ({}));
-    console.log('Backend response:', responseData);
+    const responseData = await res.json();
     if (!res.ok) {
-      let errorMsg = 'Checkout creation failed';
-      try {
-        const errData = await res.json();
-        errorMsg = errData.error || errData.message || errorMsg;
-      } catch {}
-      throw new Error(errorMsg);
+      throw new Error(responseData.error || responseData.message || 'Checkout creation failed');
     }
-    return res.json();
+    return responseData;
   } else {
-    // Sandbox Simulation
     const user = getLocalStorageItem<User | null>('reddetect_current_user', null);
     if (!user) throw new Error('User session not found');
-
-    // Return a mock Stripe Checkout redirect url
-    return {
-      url: `##stripe-checkout-success?price_id=${priceId}`
-    };
+    return { url: `##stripe-checkout-success?price_id=${priceId}` };
   }
 }
 
