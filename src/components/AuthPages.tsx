@@ -40,18 +40,65 @@ export default function AuthPages({ type, onNavigate, onAuthComplete }: AuthPage
           }
         });
         if (error) throw error;
-        // Trigger sync and auth complete
-        const user = await syncUser(email, fullName);
-        onAuthComplete(user);
+        
+        // Sync session and redirect using window.location.href
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          const apiUrl = import.meta.env.VITE_API_URL;
+          await fetch(`${apiUrl}/api/auth/sync-user`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          const stateRes = await fetch(`${apiUrl}/api/auth/workflow-state`, {
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`
+            }
+          });
+          const stateData = await stateRes.json();
+          if (stateData.state?.has_paid) {
+            window.location.href = '/dashboard';
+          } else {
+            window.location.href = '/pricing';
+          }
+        } else {
+          window.location.href = '/pricing';
+        }
       } else {
         // Real Supabase sign in
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { data: authData, error } = await supabase.auth.signInWithPassword({
           email,
           password
         });
         if (error) throw error;
-        const user = await syncUser(email, data.user?.user_metadata?.full_name || '');
-        onAuthComplete(user);
+        
+        // Sync session and redirect using window.location.href
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          const apiUrl = import.meta.env.VITE_API_URL;
+          await fetch(`${apiUrl}/api/auth/sync-user`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          const stateRes = await fetch(`${apiUrl}/api/auth/workflow-state`, {
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`
+            }
+          });
+          const stateData = await stateRes.json();
+          if (stateData.state?.has_paid) {
+            window.location.href = '/dashboard';
+          } else {
+            window.location.href = '/pricing';
+          }
+        } else {
+          window.location.href = '/pricing';
+        }
       }
     } catch (err: any) {
       setErrorText(err?.message || 'Authentication handshake failed.');
