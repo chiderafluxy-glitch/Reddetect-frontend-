@@ -22,7 +22,7 @@ export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmai
 
   const plans = [
     {
-      id: 'price_1TZqapCBOoQTb0NpDoJmctz7',
+      id: 'price_1TaHOtCBOoQTb0NpOd2zePu8',
       name: 'Pro Pack',
       price: '$20',
       period: 'month',
@@ -40,7 +40,7 @@ export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmai
       accent: true
     },
     {
-      id: 'price_1TZqc2CBOoQTb0NpsOJfR9p6',
+      id: 'price_1TaHQ6CBOoQTb0NpwMZiw8Jt',
       name: 'Builder Pack',
       price: '$50',
       period: 'month',
@@ -227,13 +227,13 @@ export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmai
               <div className="flex justify-between mb-2 pb-2 border-b border-white/5 text-white/60">
                 <span>Selected Plan</span>
                 <span className="font-semibold text-white">
-                  {selectedPlanId === 'price_free_tier' ? 'Sandbox Free Limit' : selectedPlanId === 'price_1TZqc2CBOoQTb0NpsOJfR9p6' ? 'Builder (100 Scans)' : 'Pro Premium'}
+                  {selectedPlanId === 'price_free_tier' ? 'Sandbox Free Limit' : selectedPlanId === 'price_1TaHQ6CBOoQTb0NpwMZiw8Jt' ? 'Builder (100 Scans)' : 'Pro Premium'}
                 </span>
               </div>
               <div className="flex justify-between text-white/60">
                 <span>Due Today</span>
                 <span className="font-bold text-white text-sm">
-                  {selectedPlanId === 'price_free_tier' ? '$0' : selectedPlanId === 'price_1TZqc2CBOoQTb0NpsOJfR9p6' ? '$50.00' : '$20.00'}
+                  {selectedPlanId === 'price_free_tier' ? '$0' : selectedPlanId === 'price_1TaHQ6CBOoQTb0NpwMZiw8Jt' ? '$50.00' : '$20.00'}
                 </span>
               </div>
             </div>

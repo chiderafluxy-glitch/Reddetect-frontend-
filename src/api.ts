@@ -358,7 +358,7 @@ export async function completeMockPayment(priceId: string): Promise<boolean> {
   states[user.id] = { has_signed_up: true, has_paid: true };
   setLocalStorageItem('reddetect_workflow_states', states);
 
-  const plan = priceId === 'price_1TZqc2CBOoQTb0NpsOJfR9p6' ? 'builder' : 'pro';
+  const plan = priceId === 'price_1TaHQ6CBOoQTb0NpwMZiw8Jt' ? 'builder' : 'pro';
   const subs = getLocalStorageItem<Record<string, SubscriptionInfo>>('reddetect_subscriptions', {});
   subs[user.id] = { plan, status: 'active' };
   setLocalStorageItem('reddetect_subscriptions', subs);

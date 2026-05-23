@@ -258,7 +258,7 @@ export default function LandingPage({ onNavigate, onSelectPlan }: LandingPagePro
               
               <div>
                 <button 
-                  onClick={() => onSelectPlan('price_1TZqapCBOoQTb0NpDoJmctz7')}
+                  onClick={() => onSelectPlan('price_1TaHOtCBOoQTb0NpOd2zePu8')}
                   className="w-full bg-goldenrod-orange hover:bg-orange-600 text-white py-3.5 rounded-full text-sm font-semibold cursor-pointer transition-all shadow-md shadow-goldenrod-orange/20"
                 >
                   Get Started with Pro
@@ -286,7 +286,7 @@ export default function LandingPage({ onNavigate, onSelectPlan }: LandingPagePro
               </div>
               <div>
                 <button 
-                  onClick={() => onSelectPlan('price_1TZqc2CBOoQTb0NpsOJfR9p6')}
+                  onClick={() => onSelectPlan('price_1TaHQ6CBOoQTb0NpwMZiw8Jt')}
                   className="w-full bg-white text-midnight-ink hover:bg-vanilla-cream py-3 rounded-full text-xs font-semibold cursor-pointer transition-all"
                 >
                   Get Started with Builder
