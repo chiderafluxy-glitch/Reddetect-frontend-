@@ -18,13 +18,14 @@ import Graveyard from './components/Graveyard';
 import Settings from './components/Settings';
 import { getWorkflowState, setApiMode, getApiMode, supabase, syncUser } from './api';
 import { User, WorkflowState } from './types';
-import { Sparkles, Terminal, AlertTriangle } from 'lucide-react';
+import { Sparkles, Terminal, AlertTriangle, Loader2 } from 'lucide-react';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<string>('landing');
   const [user, setUser] = useState<User | null>(null);
   const [workflowState, setWorkflowState] = useState<WorkflowState>({ has_signed_up: false, has_paid: false });
   const [systemAlert, setSystemAlert] = useState<string | null>(null);
+  const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
 
   useEffect(() => {
     // Supabase client automatically persists sessions in localStorage
@@ -54,6 +55,35 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Handle post-Stripe-redirect payment confirmation
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success' && user) {
+      setIsConfirmingPayment(true);
+      // Clear the URL param without refresh
+      const url = new URL(window.location.href);
+      url.searchParams.delete('payment');
+      window.history.replaceState({}, '', url.pathname);
+      
+      // Wait 3 seconds for webhook to fire, then check workflow state
+      setTimeout(async () => {
+        try {
+          const stateResponse = await getWorkflowState();
+          setWorkflowState(stateResponse.state);
+          if (stateResponse.state.has_paid) {
+            setCurrentPage('dashboard');
+          } else {
+            setCurrentPage('pricing');
+          }
+        } catch (e) {
+          console.warn('Payment confirmation check failed:', e);
+          setCurrentPage('pricing');
+        }
+        setIsConfirmingPayment(false);
+      }, 3000);
+    }
+  }, [user]);
 
 const handleSupabaseSession = async (session: any) => {
   // INSTANT REDIRECT - don't wait for backend
@@ -138,6 +168,16 @@ const handleSupabaseSession = async (session: any) => {
   };
 
   const renderProtectedView = () => {
+    // Show payment confirmation loading spinner
+    if (isConfirmingPayment) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+          <Loader2 className="w-12 h-12 text-goldenrod-orange animate-spin" />
+          <p className="text-vanilla-cream text-lg">Confirming your payment…</p>
+        </div>
+      );
+    }
+
     if (currentPage === 'dashboard') {
       return (
         <div className="flex flex-col gap-10 py-8">
