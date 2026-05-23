@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { createCheckout, completeMockPayment } from '../api';
+import { createCheckout, completeMockPayment, syncUser, getWorkflowState } from '../api';
 import { ArrowLeft, CheckCircle2, ShieldCheck, CreditCard, Sparkles, AlertCircle } from 'lucide-react';
 
 interface PricingProps {
@@ -22,6 +22,22 @@ export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmai
 
   const plans = [
     {
+      id: 'free',
+      name: 'Free',
+      price: '$0',
+      period: 'forever',
+      color: 'border-white/5 bg-white/[0.02] backdrop-blur-xl',
+      badge: 'FREE ACCESS',
+      features: [
+        '3 Research Reports total',
+        'Basic report only',
+        'No workspace features'
+      ],
+      btnText: 'Continue with free access →',
+      accent: false,
+      isFree: true
+    },
+    {
       id: 'price_1TaHOtCBOoQTb0NpOd2zePu8',
       name: 'Pro Pack',
       price: '$20',
@@ -37,7 +53,8 @@ export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmai
         'Persistent Idea Vault track record'
       ],
       btnText: 'Activate Pro Mode',
-      accent: true
+      accent: true,
+      isFree: false
     },
     {
       id: 'price_1TaHQ6CBOoQTb0NpwMZiw8Jt',
@@ -55,11 +72,18 @@ export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmai
         'Dedicated workspace channels'
       ],
       btnText: 'Activate Builder Mode',
-      accent: false
+      accent: false,
+      isFree: false
     }
   ];
 
   const handleCheckout = async (priceId: string) => {
+    // Handle free plan - skip Stripe
+    if (priceId === 'free') {
+      await handleFreeAccess();
+      return;
+    }
+    
     setLoading(true);
     setErrorText(null);
     try {
@@ -79,6 +103,28 @@ export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmai
       // Show the actual error message from the server
       const errorMsg = e?.response?.data?.error || e?.message || 'Checkout creation failed';
       setErrorText(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFreeAccess = async () => {
+    setLoading(true);
+    setErrorText(null);
+    try {
+      // Sync user with backend
+      await syncUser(currentEmail || '', '');
+      // Check workflow state and navigate to dashboard
+      const state = await getWorkflowState();
+      if (state.state.has_paid) {
+        onPaymentSuccess();
+      } else {
+        // User is on free plan, go to dashboard
+        onPaymentSuccess();
+      }
+    } catch (e: any) {
+      console.error('Free access error:', e);
+      setErrorText(e?.message || 'Failed to activate free access');
     } finally {
       setLoading(false);
     }
@@ -160,47 +206,59 @@ export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmai
         )}
 
         {/* Pricing options grid */}
-        <div className="grid md:grid-cols-2 gap-8 items-stretch max-w-3xl mx-auto w-full mb-12">
+        <div className="grid md:grid-cols-3 gap-6 items-stretch max-w-4xl mx-auto w-full mb-12">
           {plans.map((plan) => (
             <div 
               key={plan.id}
-              className={`p-8 rounded-2xl border-2 flex flex-col justify-between transition-all hover:scale-101 ${plan.color}`}
+              className={`p-6 rounded-2xl border-2 flex flex-col justify-between transition-all hover:scale-101 ${
+                plan.isFree 
+                  ? 'border-white/5 bg-white/[0.02] backdrop-blur-xl w-full md:w-48 flex-shrink-0' 
+                  : plan.color
+              }`}
             >
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs font-bold text-goldenrod-orange tracking-wider bg-goldenrod-orange/10 px-2.5 py-1 rounded-md">
-                    {plan.badge}
-                  </span>
-                </div>
-                <h3 className="text-xl font-medium text-white mb-2">{plan.name}</h3>
+                <span className="text-xs font-bold text-white/40 tracking-wider bg-white/5 px-2 py-1 rounded-md mb-3 inline-block">
+                  {plan.badge}
+                </span>
+                <h3 className="text-lg font-medium text-white mb-2">{plan.name}</h3>
                 <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-4xl font-bold text-white">{plan.price}</span>
+                  <span className="text-3xl font-bold text-white">{plan.price}</span>
                   <span className="text-white/50 text-sm">/ {plan.period}</span>
                 </div>
 
-                <div className="border-t border-white/5 my-6" />
+                <div className="border-t border-white/5 my-4" />
 
-                <ul className="space-y-3 mb-8">
+                <ul className="space-y-2 mb-6">
                   {plan.features.map((feat, idx) => (
-                    <li key={idx} className="flex items-start gap-2.5 text-xs text-white/70">
-                      <CheckCircle2 className="w-4 h-4 text-goldenrod-orange flex-shrink-0 mt-0.5" />
+                    <li key={idx} className="flex items-start gap-2 text-xs text-white/70">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-white/40 flex-shrink-0 mt-0.5" />
                       <span>{feat}</span>
                     </li>
                   ))}
                 </ul>
               </div>
 
-              <button
-                disabled={loading}
-                onClick={() => handleCheckout(plan.id)}
-                className={`w-full py-3.5 rounded-full text-sm font-semibold cursor-pointer transition-all ${
-                  plan.accent 
-                    ? 'bg-goldenrod-orange hover:bg-orange-600 text-white shadow-lg shadow-goldenrod-orange/15' 
-                    : 'bg-white hover:bg-vanilla-cream text-midnight-ink'
-                } disabled:opacity-50`}
-              >
-                {loading ? 'Initializing Stripe Secure...' : plan.btnText}
-              </button>
+              {plan.isFree ? (
+                <button
+                  disabled={loading}
+                  onClick={() => handleCheckout(plan.id)}
+                  className="w-full py-2.5 rounded-full text-sm font-medium text-white/70 hover:text-white cursor-pointer transition-all disabled:opacity-50"
+                >
+                  {loading ? 'Activating...' : 'Continue with free access →'}
+                </button>
+              ) : (
+                <button
+                  disabled={loading}
+                  onClick={() => handleCheckout(plan.id)}
+                  className={`w-full py-3.5 rounded-full text-sm font-semibold cursor-pointer transition-all ${
+                    plan.accent 
+                      ? 'bg-goldenrod-orange hover:bg-orange-600 text-white shadow-lg shadow-goldenrod-orange/15' 
+                      : 'bg-white hover:bg-vanilla-cream text-midnight-ink'
+                  } disabled:opacity-50`}
+                >
+                  {loading ? 'Initializing Stripe Secure...' : plan.btnText}
+                </button>
+              )}
             </div>
           ))}
         </div>

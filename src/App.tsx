@@ -193,6 +193,7 @@ const handleSupabaseSession = async (session: any) => {
           <PromptBox 
             onReportCompleted={(repId) => handleNavigate(`report/${repId}`)} 
             onSeeExample={() => handleNavigate('report/seed_rep_1')}
+            onNavigateToPricing={() => handleNavigate('pricing')}
           />
         </div>
       );

@@ -4,21 +4,23 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { getFollowupQuestions, generateReport, getReportStatus } from '../api';
-import { Sparkles, MessageSquare, ArrowRight, Loader2, FileSearch, Terminal, Database, ShieldAlert, Cpu } from 'lucide-react';
+import { getFollowupQuestions, generateReport, getReportStatus, getStripeStatus } from '../api';
+import { Sparkles, MessageSquare, ArrowRight, Loader2, FileSearch, Terminal, Database, ShieldAlert, Cpu, X } from 'lucide-react';
 
 interface PromptBoxProps {
   onReportCompleted: (reportId: string) => void;
   onSeeExample: () => void;
+  onNavigateToPricing?: () => void;
 }
 
-export default function PromptBox({ onReportCompleted, onSeeExample }: PromptBoxProps) {
+export default function PromptBox({ onReportCompleted, onSeeExample, onNavigateToPricing }: PromptBoxProps) {
   const [phase, setPhase] = useState<'input' | 'followup' | 'loading'>('input');
   const [query, setQuery] = useState('');
   const [questions, setQuestions] = useState<string[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [reportId, setReportId] = useState<string | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // Loading cycling text state
   const [cycleIndex, setCycleIndex] = useState(0);
@@ -74,6 +76,18 @@ export default function PromptBox({ onReportCompleted, onSeeExample }: PromptBox
   };
 
   const handleRunReport = async () => {
+    // Check subscription status before running report
+    try {
+      const status = await getStripeStatus();
+      if (status.subscription.plan === 'free' && status.usage.used >= 3) {
+        setShowUpgradeModal(true);
+        return;
+      }
+    } catch (e) {
+      // Continue if check fails
+      console.warn('Status check failed:', e);
+    }
+    
     setLoading(true);
     try {
       const resp = await generateReport(query, questions, answers);
@@ -265,6 +279,53 @@ export default function PromptBox({ onReportCompleted, onSeeExample }: PromptBox
           <span className="text-[9px] text-white/30 uppercase tracking-widest font-bold mt-4">
             Estimated wait time: &lt; 15 seconds remaining
           </span>
+        </div>
+      )}
+
+      {/* Upgrade Modal - shown when free user has used all 3 reports */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#142325] border border-white/10 rounded-2xl max-w-md w-full p-8 text-center relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-goldenrod-orange to-accent-blue" />
+            
+            <div className="w-16 h-16 rounded-full bg-goldenrod-orange/10 flex items-center justify-center mx-auto mb-6">
+              <ShieldAlert className="w-8 h-8 text-goldenrod-orange" />
+            </div>
+            
+            <h3 className="text-xl font-semibold text-white mb-3">
+              You have used all 3 of your free reports
+            </h3>
+            <p className="text-white/50 text-sm mb-8">
+              Upgrade to keep validating your ideas.
+            </p>
+            
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  setShowUpgradeModal(false);
+                  onNavigateToPricing?.();
+                }}
+                className="w-full py-3.5 rounded-full bg-goldenrod-orange hover:bg-orange-600 text-white text-sm font-semibold cursor-pointer transition-all"
+              >
+                Upgrade to Pro
+              </button>
+              <button
+                onClick={() => {
+                  setShowUpgradeModal(false);
+                  onNavigateToPricing?.();
+                }}
+                className="w-full py-3.5 rounded-full bg-white hover:bg-vanilla-cream text-midnight-ink text-sm font-semibold cursor-pointer transition-all"
+              >
+                Upgrade to Builder
+              </button>
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="w-full py-2.5 text-white/40 hover:text-white text-sm cursor-pointer transition-all"
+              >
+                Maybe later
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
