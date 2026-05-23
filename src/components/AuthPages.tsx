@@ -201,7 +201,7 @@ export default function AuthPages({ type, onNavigate, onAuthComplete }: AuthPage
           <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.53-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1c-6.075 0-11 4.925-11 11s4.925 11 11 11c6.34 0 10.55-4.46 10.55-10.74 0-.72-.08-1.275-.175-1.685H12.24z" />
           </svg>
-          Sign in with Google
+          {type === 'signup' ? 'Sign up with Google' : 'Sign in with Google'}
         </button>
 
         {/* Navigation Switch Link */}
