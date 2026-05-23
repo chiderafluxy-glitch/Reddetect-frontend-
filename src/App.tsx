@@ -16,6 +16,7 @@ import WorkspaceDetail from './components/WorkspaceDetail';
 import IdeaVault from './components/IdeaVault';
 import Graveyard from './components/Graveyard';
 import Settings from './components/Settings';
+import ProtectedRoute from './components/ProtectedRoute';
 import { getWorkflowState, setApiMode, getApiMode, supabase, syncUser } from './api';
 import { User, WorkflowState } from './types';
 import { Sparkles, Terminal, AlertTriangle, Loader2 } from 'lucide-react';
@@ -86,7 +87,6 @@ export default function App() {
   }, [user]);
 
 const handleSupabaseSession = async (session: any) => {
-  // INSTANT REDIRECT - don't wait for backend
   const user: User = {
     id: session.user.id,
     email: session.user.email,
@@ -94,21 +94,28 @@ const handleSupabaseSession = async (session: any) => {
   };
   
   setUser(user);
-  // Default to pricing page immediately
-  setWorkflowState({ has_signed_up: true, has_paid: false });
-  setCurrentPage('pricing');
   
-  // Background sync with backend (don't block redirect)
-  syncUser(user.email, user.full_name || '').then(result => {
-    // Update state if backend responds faster
-    setUser(result.user);
-    setWorkflowState(result.workflowState);
-    if (result.workflowState.has_paid) {
+  try {
+    // Step 1 - Call POST /api/auth/sync-user
+    await syncUser(user.email, user.full_name || '');
+    
+    // Step 2 - Call GET /api/auth/workflow-state
+    const stateResponse = await getWorkflowState();
+    setWorkflowState(stateResponse.state);
+    
+    // Step 3 - Read response and redirect
+    if (!stateResponse.state.has_paid) {
+      // If has_paid is false → /pricing
+      setCurrentPage('pricing');
+    } else {
+      // If has_paid is true → /dashboard
       setCurrentPage('dashboard');
     }
-  }).catch(err => {
-    console.warn('Backend sync failed (non-blocking):', err);
-  });
+  } catch (e) {
+    console.warn('Session handling error:', e);
+    // On error, default to pricing
+    setCurrentPage('pricing');
+  }
 };
 
   const verifyStateAndRedirect = async (activeUser: User) => {
@@ -303,6 +310,7 @@ const handleSupabaseSession = async (session: any) => {
 
   // 4. PRIVATE APP SHELL WITH SIDEBAR (Protected Pages Layout)
   return (
+    <ProtectedRoute onNavigate={handleNavigate}>
     <div className="min-h-screen bg-midnight-ink text-vanilla-cream font-aeonikpro flex flex-row relative overflow-x-hidden">
       
       {/* Absolute Header Ambient Top Accent Bar */}
@@ -342,5 +350,6 @@ const handleSupabaseSession = async (session: any) => {
       </div>
 
     </div>
+    </ProtectedRoute>
   );
 }
