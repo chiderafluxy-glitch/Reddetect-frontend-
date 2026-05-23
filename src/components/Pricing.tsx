@@ -204,6 +204,7 @@ export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmai
             </div>
           ))}
         </div>
+      </div>
 
       {/* Stripe Payment Mock Interface Modal */}
       {showSimulatedCheckout && (
