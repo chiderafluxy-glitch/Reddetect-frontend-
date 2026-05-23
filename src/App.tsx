@@ -17,6 +17,7 @@ import IdeaVault from './components/IdeaVault';
 import Graveyard from './components/Graveyard';
 import Settings from './components/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 import { getWorkflowState, setApiMode, getApiMode, supabase, syncUser } from './api';
 import { User, WorkflowState } from './types';
 import { Sparkles, Terminal, AlertTriangle, Loader2 } from 'lucide-react';
@@ -209,22 +210,24 @@ const handleSupabaseSession = async (session: any) => {
     try {
     if (currentPage === 'dashboard') {
       return (
-        <div className="flex flex-col gap-10 py-8">
-          <div className="text-left">
-            <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-white mb-2 font-dotconnect">
-              Welcome, <span className="text-goldenrod-orange">{user?.full_name || 'Innovate'}.</span>
-            </h1>
-            <p className="text-xs text-white/50 max-w-lg leading-relaxed">
-              Analyze commercial intent, competitor radar charts, pain points, and user pricing compliance dynamically.
-            </p>
-          </div>
+        <ErrorBoundary fallback={<div style={{color:'white',padding:'20px'}}>Dashboard error - check console</div>}>
+          <div className="flex flex-col gap-10 py-8">
+            <div className="text-left">
+              <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-white mb-2 font-dotconnect">
+                Welcome, <span className="text-goldenrod-orange">{user?.full_name || 'Innovate'}.</span>
+              </h1>
+              <p className="text-xs text-white/50 max-w-lg leading-relaxed">
+                Analyze commercial intent, competitor radar charts, pain points, and user pricing compliance dynamically.
+              </p>
+            </div>
 
-          <PromptBox 
-            onReportCompleted={(repId) => handleNavigate(`report/${repId}`)} 
-            onSeeExample={() => handleNavigate('report/seed_rep_1')}
-            onNavigateToPricing={() => handleNavigate('pricing')}
-          />
-        </div>
+            <PromptBox 
+              onReportCompleted={(repId) => handleNavigate(`report/${repId}`)} 
+              onSeeExample={() => handleNavigate('report/seed_rep_1')}
+              onNavigateToPricing={() => handleNavigate('pricing')}
+            />
+          </div>
+        </ErrorBoundary>
       );
     }
 
