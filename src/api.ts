@@ -333,12 +333,16 @@ export async function createCheckout(priceId: string): Promise<{ url: string }> 
   const mode = getApiMode();
   if (mode === 'live') {
     const header = await getAuthHeader();
+    console.log('Auth header for checkout:', header);
     console.log('Calling backend:', `${API_URL}/api/stripe/create-checkout`);
     const res = await fetch(`${API_URL}/api/stripe/create-checkout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...header },
       body: JSON.stringify({ priceId })
     });
+    console.log('Backend response status:', res.status);
+    const responseData = await res.json().catch(() => ({}));
+    console.log('Backend response:', responseData);
     if (!res.ok) {
       let errorMsg = 'Checkout creation failed';
       try {
