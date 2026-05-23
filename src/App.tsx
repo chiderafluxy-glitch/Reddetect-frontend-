@@ -56,45 +56,29 @@ export default function App() {
   }, []);
 
 const handleSupabaseSession = async (session: any) => {
-  try {
-    // Try to sync with backend, but don't fail if backend is down
-    let user: User | null = null;
-    let hasPaid = false;
-    
-    try {
-      const result = await syncUser(
-        session.user.email,
-        session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
-      );
-      user = result.user;
-      hasPaid = result.workflowState?.has_paid || false;
-    } catch (syncError) {
-      console.warn('Backend sync failed, using Supabase session directly', syncError);
-      // Use Supabase user data directly if backend fails
-      user = {
-        id: session.user.id,
-        email: session.user.email,
-        full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
-      };
-      // Try to get workflow state, default to pricing if fails
-      try {
-        const stateResponse = await getWorkflowState();
-        hasPaid = stateResponse.state?.has_paid || false;
-      } catch {
-        hasPaid = false; // Default to pricing if can't determine
-      }
+  // INSTANT REDIRECT - don't wait for backend
+  const user: User = {
+    id: session.user.id,
+    email: session.user.email,
+    full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
+  };
+  
+  setUser(user);
+  // Default to pricing page immediately
+  setWorkflowState({ has_signed_up: true, has_paid: false });
+  setCurrentPage('pricing');
+  
+  // Background sync with backend (don't block redirect)
+  syncUser(user.email, user.full_name || '').then(result => {
+    // Update state if backend responds faster
+    setUser(result.user);
+    setWorkflowState(result.workflowState);
+    if (result.workflowState.has_paid) {
+      setCurrentPage('dashboard');
     }
-    
-    if (user) {
-      setUser(user);
-      setWorkflowState({ has_signed_up: true, has_paid: hasPaid });
-      setCurrentPage(hasPaid ? 'dashboard' : 'pricing');
-    }
-  } catch (e) {
-    console.error('Session handling failed', e);
-    // Even if everything fails, try to show pricing page
-    setCurrentPage('pricing');
-  }
+  }).catch(err => {
+    console.warn('Backend sync failed (non-blocking):', err);
+  });
 };
 
   const verifyStateAndRedirect = async (activeUser: User) => {
