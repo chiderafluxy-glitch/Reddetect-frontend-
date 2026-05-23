@@ -85,7 +85,12 @@ const handleSupabaseSession = async (session: any) => {
     }
     
     if (user) {
+      // Save full session data including access token for API calls
       localStorage.setItem('reddetect_current_user', JSON.stringify(user));
+      localStorage.setItem('reddetect_session', JSON.stringify({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token
+      }));
       setUser(user);
       setWorkflowState({ has_signed_up: true, has_paid: hasPaid });
       setCurrentPage(hasPaid ? 'dashboard' : 'pricing');
