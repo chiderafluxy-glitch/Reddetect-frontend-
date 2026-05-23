@@ -27,24 +27,8 @@ export default function App() {
   const [systemAlert, setSystemAlert] = useState<string | null>(null);
 
   useEffect(() => {
-    // Restore session from localStorage if exists
-    const savedSession = localStorage.getItem('reddetect_session');
-    if (savedSession) {
-      try {
-        const parsed = JSON.parse(savedSession);
-        if (parsed.access_token) {
-          // Set the session in Supabase client
-          supabase.auth.setSession({
-            access_token: parsed.access_token,
-            refresh_token: parsed.refresh_token || ''
-          });
-        }
-      } catch (e) {
-        console.warn('Failed to restore session from localStorage:', e);
-      }
-    }
-
-    // Check for existing session on mount
+    // Supabase client automatically persists sessions in localStorage
+    // Just check for existing session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         handleSupabaseSession(session);
@@ -102,12 +86,6 @@ const handleSupabaseSession = async (session: any) => {
     }
     
     if (user) {
-      // Save full session data including access token for API calls
-      localStorage.setItem('reddetect_current_user', JSON.stringify(user));
-      localStorage.setItem('reddetect_session', JSON.stringify({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token
-      }));
       setUser(user);
       setWorkflowState({ has_signed_up: true, has_paid: hasPaid });
       setCurrentPage(hasPaid ? 'dashboard' : 'pricing');
