@@ -328,12 +328,20 @@ export async function createCheckout(priceId: string): Promise<{ url: string }> 
   const mode = getApiMode();
   if (mode === 'live') {
     const header = await getAuthHeader();
+    console.log('Calling backend:', `${API_URL}/api/stripe/create-checkout`);
     const res = await fetch(`${API_URL}/api/stripe/create-checkout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...header },
       body: JSON.stringify({ priceId })
     });
-    if (!res.ok) throw new Error('Checkout creation failed');
+    if (!res.ok) {
+      let errorMsg = 'Checkout creation failed';
+      try {
+        const errData = await res.json();
+        errorMsg = errData.error || errData.message || errorMsg;
+      } catch {}
+      throw new Error(errorMsg);
+    }
     return res.json();
   } else {
     // Sandbox Simulation

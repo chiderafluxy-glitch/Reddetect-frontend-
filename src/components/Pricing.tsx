@@ -63,7 +63,9 @@ export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmai
     setLoading(true);
     setErrorText(null);
     try {
+      console.log('Creating checkout for priceId:', priceId);
       const resp = await createCheckout(priceId);
+      console.log('Checkout response:', resp);
       if (resp.url.startsWith('##stripe-checkout-success')) {
         // We are in simulated mode!
         setSelectedPlanId(priceId);
@@ -73,7 +75,10 @@ export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmai
         window.location.href = resp.url;
       }
     } catch (e: any) {
-      setErrorText(e?.message || 'Failed to initialize payment gateway checkout.');
+      console.error('Checkout error:', e);
+      // Show the actual error message from the server
+      const errorMsg = e?.response?.data?.error || e?.message || 'Checkout creation failed';
+      setErrorText(errorMsg);
     } finally {
       setLoading(false);
     }
