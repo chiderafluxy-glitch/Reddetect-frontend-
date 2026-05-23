@@ -26,30 +26,49 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [workflowState, setWorkflowState] = useState<WorkflowState>({ has_signed_up: false, has_paid: false });
   const [systemAlert, setSystemAlert] = useState<string | null>(null);
-  const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
 
   useEffect(() => {
-    // Supabase client automatically persists sessions in localStorage
-    // Just check for existing session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        handleSupabaseSession(session);
-      } else {
-        const hash = window.location.hash;
-        if (hash && hash.startsWith('#')) {
-          const path = hash.slice(1);
-          if (['landing', 'login', 'signup', 'pricing'].includes(path)) {
-            setCurrentPage(path);
-          }
-        }
+    const handleAuth = async (session: any) => {
+      if (!session?.access_token) {
+        setCurrentPage('landing');
+        return;
       }
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL;
+        await fetch(`${apiUrl}/api/auth/sync-user`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        const stateRes = await fetch(`${apiUrl}/api/auth/workflow-state`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
+        const stateData = await stateRes.json();
+        if (stateData.state?.has_paid) {
+          setCurrentPage('dashboard');
+        } else {
+          setCurrentPage('pricing');
+        }
+      } catch (e) {
+        setCurrentPage('landing');
+      }
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleAuth(session);
     });
 
-    // Listen for auth state changes including Google OAuth redirect
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          handleSupabaseSession(session);
+        if (event === 'SIGNED_IN') {
+          await handleAuth(session);
+        }
+        if (event === 'SIGNED_OUT') {
+          setCurrentPage('landing');
         }
       }
     );
@@ -57,34 +76,31 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Handle post-Stripe-redirect payment confirmation
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('payment') === 'success' && user) {
-      setIsConfirmingPayment(true);
-      // Clear the URL param without refresh
-      const url = new URL(window.location.href);
-      url.searchParams.delete('payment');
-      window.history.replaceState({}, '', url.pathname);
-      
-      // Wait 3 seconds for webhook to fire, then check workflow state
-      setTimeout(async () => {
-        try {
-          const stateResponse = await getWorkflowState();
-          setWorkflowState(stateResponse.state);
-          if (stateResponse.state.has_paid) {
+    if (params.get('payment') === 'success') {
+      const checkPaid = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const apiUrl = import.meta.env.VITE_API_URL;
+        let attempts = 0;
+        const interval = setInterval(async () => {
+          attempts++;
+          const res = await fetch(`${apiUrl}/api/auth/workflow-state`, {
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+          });
+          const data = await res.json();
+          if (data.state?.has_paid) {
+            clearInterval(interval);
+            window.history.replaceState({}, '', '/');
             setCurrentPage('dashboard');
-          } else {
-            setCurrentPage('pricing');
           }
-        } catch (e) {
-          console.warn('Payment confirmation check failed:', e);
-          setCurrentPage('pricing');
-        }
-        setIsConfirmingPayment(false);
-      }, 3000);
+          if (attempts >= 10) clearInterval(interval);
+        }, 2000);
+      };
+      checkPaid();
     }
-  }, [user]);
+  }, []);
 
 const handleSupabaseSession = async (session: any) => {
   const user: User = {
