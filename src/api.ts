@@ -31,42 +31,45 @@ export function setApiMode(mode: 'live' | 'sandbox') {
 async function getAuthHeader(): Promise<Record<string, string>> {
   try {
     // First, try to get current session from Supabase
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
     if (session?.access_token) {
       return { 'Authorization': `Bearer ${session.access_token}` };
     }
     
-    // If no session, try refresh
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-    if (!refreshError && refreshData?.session?.access_token) {
-      return { 'Authorization': `Bearer ${refreshData.session.access_token}` };
-    }
-    
-    // Fallback: check localStorage for saved session
+    // Try to restore from localStorage and refresh
     const savedSession = localStorage.getItem('reddetect_session');
     if (savedSession) {
       try {
         const parsed = JSON.parse(savedSession);
         if (parsed.access_token) {
-          // Try to restore this session
-          const { data: restored } = await supabase.auth.setSession({
+          // Set the session and try to refresh
+          const { data: refreshed } = await supabase.auth.setSession({
             access_token: parsed.access_token,
             refresh_token: parsed.refresh_token || ''
           });
-          if (restored?.session?.access_token) {
-            return { 'Authorization': `Bearer ${restored.session.access_token}` };
+          if (refreshed?.session?.access_token) {
+            // Update localStorage with new tokens
+            localStorage.setItem('reddetect_session', JSON.stringify({
+              access_token: refreshed.session.access_token,
+              refresh_token: refreshed.session.refresh_token
+            }));
+            return { 'Authorization': `Bearer ${refreshed.session.access_token}` };
           }
-          // If restoration fails, still try the stored token
-          return { 'Authorization': `Bearer ${parsed.access_token}` };
         }
       } catch (e) {
-        console.warn('Failed to restore session from localStorage:', e);
+        console.warn('Failed to restore session:', e);
       }
+    }
+    
+    // Last resort: try refreshSession without setting
+    const { data: refreshData } = await supabase.auth.refreshSession();
+    if (refreshData?.session?.access_token) {
+      return { 'Authorization': `Bearer ${refreshData.session.access_token}` };
     }
   } catch (e) {
     console.warn('Auth header lookup failed:', e);
   }
-  // Return empty - let backend handle unauthenticated requests
+  // Return empty - let backend handle auth
   return {};
 }
 

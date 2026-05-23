@@ -27,6 +27,23 @@ export default function App() {
   const [systemAlert, setSystemAlert] = useState<string | null>(null);
 
   useEffect(() => {
+    // Restore session from localStorage if exists
+    const savedSession = localStorage.getItem('reddetect_session');
+    if (savedSession) {
+      try {
+        const parsed = JSON.parse(savedSession);
+        if (parsed.access_token) {
+          // Set the session in Supabase client
+          supabase.auth.setSession({
+            access_token: parsed.access_token,
+            refresh_token: parsed.refresh_token || ''
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to restore session from localStorage:', e);
+      }
+    }
+
     // Check for existing session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
