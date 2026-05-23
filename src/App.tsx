@@ -26,13 +26,16 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [workflowState, setWorkflowState] = useState<WorkflowState>({ has_signed_up: false, has_paid: false });
   const [systemAlert, setSystemAlert] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const handleAuth = async (session: any) => {
       if (!session?.access_token) {
         setCurrentPage('landing');
+        setIsLoading(false);
         return;
       }
+      setIsLoading(true);
       try {
         const apiUrl = import.meta.env.VITE_API_URL;
         await fetch(`${apiUrl}/api/auth/sync-user`, {
@@ -55,6 +58,8 @@ export default function App() {
         }
       } catch (e) {
         setCurrentPage('landing');
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -191,16 +196,17 @@ const handleSupabaseSession = async (session: any) => {
   };
 
   const renderProtectedView = () => {
-    // Show payment confirmation loading spinner
-    if (isConfirmingPayment) {
+    // Show loading spinner while auth is processing
+    if (isLoading) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
           <Loader2 className="w-12 h-12 text-goldenrod-orange animate-spin" />
-          <p className="text-vanilla-cream text-lg">Confirming your payment…</p>
+          <p className="text-vanilla-cream text-lg">Loading...</p>
         </div>
       );
     }
 
+    try {
     if (currentPage === 'dashboard') {
       return (
         <div className="flex flex-col gap-10 py-8">
@@ -295,6 +301,15 @@ const handleSupabaseSession = async (session: any) => {
         Route "{currentPage}" not configured or is missing properties.
       </div>
     );
+    } catch (err) {
+      console.error('Dashboard render error:', err);
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+          <Loader2 className="w-12 h-12 text-goldenrod-orange animate-spin" />
+          <p className="text-vanilla-cream text-lg">Something went wrong. Please refresh.</p>
+        </div>
+      );
+    }
   };
 
   // 1. PUBLIC LANDING PAGE

@@ -21,6 +21,7 @@ export default function PromptBox({ onReportCompleted, onSeeExample, onNavigateT
   const [loading, setLoading] = useState(false);
   const [reportId, setReportId] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Loading cycling text state
   const [cycleIndex, setCycleIndex] = useState(0);
@@ -58,6 +59,7 @@ export default function PromptBox({ onReportCompleted, onSeeExample, onNavigateT
   const handleStartValidation = async () => {
     if (!query.trim()) return;
     setLoading(true);
+    setError(null);
     try {
       const resp = await getFollowupQuestions(query);
       setQuestions(resp.questions || []);
@@ -70,6 +72,7 @@ export default function PromptBox({ onReportCompleted, onSeeExample, onNavigateT
       setPhase('followup');
     } catch (e) {
       console.error('Failed to get questions', e);
+      setError('Failed to load. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -77,6 +80,7 @@ export default function PromptBox({ onReportCompleted, onSeeExample, onNavigateT
 
   const handleRunReport = async () => {
     // Check subscription status before running report
+    setError(null);
     try {
       const status = await getStripeStatus();
       if (status.subscription.plan === 'free' && status.usage.used >= 3) {
@@ -104,7 +108,7 @@ export default function PromptBox({ onReportCompleted, onSeeExample, onNavigateT
             onReportCompleted(rId);
           } else if (statusResult.status === 'failed') {
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-            alert('Scraper execution encountered a live server failure. Resetting...');
+            setError('Scraper execution encountered a live server failure. Resetting...');
             setPhase('input');
           }
         } catch (e) {
@@ -114,6 +118,7 @@ export default function PromptBox({ onReportCompleted, onSeeExample, onNavigateT
 
     } catch (e) {
       console.error('Failed to fire generate', e);
+      setError('Failed to generate report. Please try again.');
       setPhase('input');
     } finally {
       setLoading(false);
@@ -146,6 +151,13 @@ export default function PromptBox({ onReportCompleted, onSeeExample, onNavigateT
           <p className="text-white/40 text-xs mb-8">
             Tell us about your SaaS idea, problem statement, or custom tool concept. We will scan live forums in parallel to verify.
           </p>
+
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-100 text-xs p-3 rounded-xl mb-4 flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 flex-shrink-0" />
+              {error}
+            </div>
+          )}
 
           <div className="bg-white/[0.02] backdrop-blur-md border border-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] rounded-xl p-4 mb-6 focus-within:border-goldenrod-orange/40 focus-within:bg-white/[0.04] transition-all flex flex-col gap-2">
             <textarea
