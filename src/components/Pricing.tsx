@@ -4,8 +4,8 @@
  */
 
 import { useState } from 'react';
-import { createCheckout, completeMockPayment, syncUser, getWorkflowState } from '../api';
-import { ArrowLeft, CheckCircle2, ShieldCheck, CreditCard, Sparkles, AlertCircle } from 'lucide-react';
+import { createCheckout, syncUser, getWorkflowState } from '../api';
+import { ArrowLeft, CheckCircle2, ShieldCheck, Sparkles, AlertCircle } from 'lucide-react';
 
 interface PricingProps {
   onBackToLanding?: () => void;
@@ -15,9 +15,6 @@ interface PricingProps {
 
 export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmail }: PricingProps) {
   const [loading, setLoading] = useState(false);
-  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const [showSimulatedCheckout, setShowSimulatedCheckout] = useState(false);
-  const [simulateSuccess, setSimulateSuccess] = useState<boolean | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
 
   const plans = [
@@ -90,17 +87,12 @@ export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmai
       console.log('Creating checkout for priceId:', priceId);
       const resp = await createCheckout(priceId);
       console.log('Checkout response:', resp);
-      if (resp.url.startsWith('##stripe-checkout-success')) {
-        // We are in simulated mode!
-        setSelectedPlanId(priceId);
-        setShowSimulatedCheckout(true);
-      } else if (resp.url) {
-        // Redirection to real Stripe Checkout URL
+      if (resp.url) {
+        // Redirect to real Stripe Checkout URL
         window.location.href = resp.url;
       }
     } catch (e: any) {
       console.error('Checkout error:', e);
-      // Show the actual error message from the server
       const errorMsg = e?.response?.data?.error || e?.message || 'Checkout creation failed';
       setErrorText(errorMsg);
     } finally {
@@ -128,32 +120,6 @@ export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmai
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleCompleteSimulation = async (success: boolean) => {
-    if (!selectedPlanId) return;
-    setLoading(true);
-    setSimulateSuccess(success);
-    
-    setTimeout(async () => {
-      try {
-        if (success) {
-          const ok = await completeMockPayment(selectedPlanId);
-          if (ok) {
-            onPaymentSuccess();
-          } else {
-            setErrorText("Stripe sandbox processor rejected the credentials.");
-          }
-        } else {
-          setShowSimulatedCheckout(false);
-          setSimulateSuccess(null);
-        }
-      } catch (e) {
-        setErrorText("Critical transaction syncing error.");
-      } finally {
-        setLoading(false);
-      }
-    }, 1500);
   };
 
   return (
@@ -263,81 +229,6 @@ export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmai
           ))}
         </div>
       </div>
-
-      {/* Stripe Payment Mock Interface Modal */}
-      {showSimulatedCheckout && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="bg-[#142325] border border-white/10 rounded-2xl max-w-md w-full p-6 text-vanilla-cream shadow-2xl relative overflow-hidden">
-            {/* Design accents */}
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-goldenrod-orange to-accent-blue" />
-            
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-goldenrod-orange">
-                <CreditCard className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-semibold text-white">Stripe Checkout Sandbox</h4>
-                <p className="text-[10px] text-white/40">Secure Test Pipeline</p>
-              </div>
-            </div>
-
-            <div className="bg-black/20 rounded-xl p-4 border border-white/5 mb-6 text-xs">
-              <div className="flex justify-between mb-2 pb-2 border-b border-white/5 text-white/60">
-                <span>Selected Plan</span>
-                <span className="font-semibold text-white">
-                  {selectedPlanId === 'price_free_tier' ? 'Sandbox Free Limit' : selectedPlanId === 'price_1TaHQ6CBOoQTb0NpwMZiw8Jt' ? 'Builder (100 Scans)' : 'Pro Premium'}
-                </span>
-              </div>
-              <div className="flex justify-between text-white/60">
-                <span>Due Today</span>
-                <span className="font-bold text-white text-sm">
-                  {selectedPlanId === 'price_free_tier' ? '$0' : selectedPlanId === 'price_1TaHQ6CBOoQTb0NpwMZiw8Jt' ? '$50.00' : '$20.00'}
-                </span>
-              </div>
-            </div>
-
-            <p className="text-xs text-white/50 mb-6 leading-relaxed">
-              In this preview environment, live Stripe payment gates operate in simulation mode. Click approve to securely credit your workspace session with live access tokens.
-            </p>
-
-            {simulateSuccess === true ? (
-              <div className="text-center py-6 flex flex-col items-center">
-                <CheckCircle2 className="w-12 h-12 text-green-400 animate-bounce mb-3" />
-                <span className="text-sm font-semibold text-white">Transaction Verified!</span>
-                <span className="text-xs text-white/40 mt-1">Routing to the command center...</span>
-              </div>
-            ) : simulateSuccess === false ? (
-              <div className="text-center py-6 flex flex-col items-center">
-                <AlertCircle className="w-12 h-12 text-red-500 animate-pulse mb-3" />
-                <span className="text-sm font-semibold text-white">Transaction Aborted</span>
-                <span className="text-xs text-white/40 mt-1">Resetting details...</span>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                <button
-                  disabled={loading}
-                  onClick={() => handleCompleteSimulation(true)}
-                  className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl text-sm cursor-pointer transition-colors flex items-center justify-center gap-2"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  {loading ? 'Processing Transaction...' : 'Approve & Sync Account'}
-                </button>
-                <button
-                  disabled={loading}
-                  onClick={() => handleCompleteSimulation(false)}
-                  className="w-full bg-white/5 hover:bg-white/10 text-white/70 py-2.5 rounded-xl text-xs cursor-pointer transition-colors"
-                >
-                  Decline Transaction
-                </button>
-              </div>
-            )}
-            
-            <p className="text-[10px] text-center text-white/20 mt-4">
-              Your actual customer data is encrypted according to standard digital blueprints.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Trust terms footer banner */}
       <div className="max-w-md mx-auto text-center mt-12 text-white/20 text-[10px] flex items-center justify-center gap-2">

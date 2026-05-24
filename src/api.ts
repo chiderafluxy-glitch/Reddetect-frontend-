@@ -330,78 +330,32 @@ export async function getWorkflowState(): Promise<{ state: WorkflowState; subscr
 // ================= STRIPE API =================
 
 export async function createCheckout(priceId: string): Promise<{ url: string }> {
-  const mode = getApiMode();
-  if (mode === 'live') {
-    const header = await getAuthHeader();
-    const res = await fetch(`${API_URL}/api/stripe/create-checkout`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...header },
-      body: JSON.stringify({ priceId })
-    });
-    const responseData = await res.json();
-    if (!res.ok) {
-      throw new Error(responseData.error || responseData.message || 'Checkout creation failed');
-    }
-    return responseData;
-  } else {
-    const user = getLocalStorageItem<User | null>('reddetect_current_user', null);
-    if (!user) throw new Error('User session not found');
-    return { url: `##stripe-checkout-success?price_id=${priceId}` };
+  const header = await getAuthHeader();
+  const res = await fetch(`${API_URL}/api/stripe/create-checkout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...header },
+    body: JSON.stringify({ priceId })
+  });
+  const responseData = await res.json();
+  if (!res.ok) {
+    throw new Error(responseData.error || responseData.message || 'Checkout creation failed');
   }
+  return responseData;
 }
 
 export async function completeMockPayment(priceId: string): Promise<boolean> {
-  const user = getLocalStorageItem<User | null>('reddetect_current_user', null);
-  if (!user) return false;
-
-  const states = getLocalStorageItem<Record<string, WorkflowState>>('reddetect_workflow_states', {});
-  states[user.id] = { has_signed_up: true, has_paid: true };
-  setLocalStorageItem('reddetect_workflow_states', states);
-
-  const plan = priceId === 'price_1TaHQ6CBOoQTb0NpwMZiw8Jt' ? 'builder' : 'pro';
-  const subs = getLocalStorageItem<Record<string, SubscriptionInfo>>('reddetect_subscriptions', {});
-  subs[user.id] = { plan, status: 'active' };
-  setLocalStorageItem('reddetect_subscriptions', subs);
-
-  return true;
+  // Sandbox mode removed - only real Stripe payments
+  return false;
 }
 
 export async function getStripeStatus(): Promise<{ subscription: SubscriptionInfo; usage: { used: number; limit: number; unlimited: boolean } }> {
-  const mode = getApiMode();
-  if (mode === 'live') {
-    const header = await getAuthHeader();
-    const res = await fetch(`${API_URL}/api/stripe/status`, {
-      method: 'GET',
-      headers: { ...header }
-    });
-    if (!res.ok) throw new Error('Stripe status failed');
-    return res.json();
-  } else {
-    // Sandbox Simulation
-    const user = getLocalStorageItem<User | null>('reddetect_current_user', null);
-    if (!user) {
-      return {
-        subscription: { plan: 'free', status: 'inactive' },
-        usage: { used: 0, limit: 3, unlimited: false }
-      };
-    }
-
-    const subs = getLocalStorageItem<Record<string, SubscriptionInfo>>('reddetect_subscriptions', {});
-    const sub = subs[user.id] || { plan: 'free', status: 'inactive' };
-
-    const reports = getLocalStorageItem<Report[]>('reddetect_reports', []).filter(r => r.id.startsWith(user.id) || r.id.length < 15);
-    const used = reports.length;
-
-    let limit = 3;
-    let unlimited = false;
-    if (sub.plan === 'pro') limit = 30;
-    else if (sub.plan === 'builder') { limit = 150; unlimited = true; } // Unlimited in practical terms
-
-    return {
-      subscription: sub,
-      usage: { used, limit, unlimited }
-    };
-  }
+  const header = await getAuthHeader();
+  const res = await fetch(`${API_URL}/api/stripe/status`, {
+    method: 'GET',
+    headers: { ...header }
+  });
+  if (!res.ok) throw new Error('Stripe status failed');
+  return res.json();
 }
 
 // ================= REPORTS (Core Feature) =================
