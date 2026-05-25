@@ -180,13 +180,8 @@ const handleSupabaseSession = async (session: any) => {
   };
 
   const handleSelectPlan = (planId: string) => {
-    // Set mock user if choosing plan instantly from landing to ensure a smooth flow
-    if (!user) {
-      const mockUser: User = { id: 'guest_creator_123', email: 'creator.test@google.com', full_name: 'Guest Maker' };
-      setUser(mockUser);
-      localStorage.setItem('reddetect_current_user', JSON.stringify(mockUser));
-    }
-    handleNavigate('pricing');
+    // Always redirect to signup first - nobody should reach Stripe without an account
+    handleNavigate('signup');
   };
 
   const handlePaymentCompleted = () => {
@@ -337,6 +332,7 @@ const handleSupabaseSession = async (session: any) => {
       <Pricing 
         onBackToLanding={() => handleNavigate('landing')} 
         onPaymentSuccess={handlePaymentCompleted}
+        onNavigate={handleNavigate}
         currentEmail={user?.email}
       />
     );

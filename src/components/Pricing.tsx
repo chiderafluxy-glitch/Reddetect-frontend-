@@ -3,19 +3,31 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
-import { createCheckout, syncUser, getWorkflowState } from '../api';
+import { useState, useEffect } from 'react';
+import { createCheckout, syncUser, getWorkflowState, supabase } from '../api';
 import { ArrowLeft, CheckCircle2, ShieldCheck, Sparkles, AlertCircle } from 'lucide-react';
 
 interface PricingProps {
   onBackToLanding?: () => void;
   onPaymentSuccess: () => void;
+  onNavigate: (page: string) => void;
   currentEmail?: string;
 }
 
-export default function Pricing({ onBackToLanding, onPaymentSuccess, currentEmail }: PricingProps) {
+export default function Pricing({ onBackToLanding, onPaymentSuccess, onNavigate, currentEmail }: PricingProps) {
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
+
+  // Check for active session - redirect to signup if none
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        onNavigate('signup');
+      }
+    };
+    checkSession();
+  }, [onNavigate]);
 
   const plans = [
     {
