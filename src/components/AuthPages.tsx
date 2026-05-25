@@ -31,17 +31,18 @@ export default function AuthPages({ type, onNavigate, onAuthComplete }: AuthPage
 
     try {
       if (type === 'signup') {
-        // Real Supabase sign up
+        // Real Supabase sign up - treat as instant, no email confirmation needed
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: { full_name: fullName }
+            data: { full_name: fullName },
+            emailRedirectTo: window.location.origin
           }
         });
         if (error) throw error;
         
-        // Sync session and redirect using window.location.href
+        // Immediately get session and proceed (don't wait for email confirmation)
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.access_token) {
           const apiUrl = import.meta.env.VITE_API_URL;
@@ -64,6 +65,7 @@ export default function AuthPages({ type, onNavigate, onAuthComplete }: AuthPage
             window.location.href = '/pricing';
           }
         } else {
+          // If no session yet, redirect to pricing anyway (new user = unpaid)
           window.location.href = '/pricing';
         }
       } else {
